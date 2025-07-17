@@ -2,8 +2,8 @@ package repository
 
 import (
 	"fmt"
-	"github.com/amirmtaati/libra/core/models"
-	"github.com/amirmtaati/libra/core/storage"
+	"github.com/amirmtaati/libra/internal/storage/models"
+	"github.com/amirmtaati/libra/internal/storage"
 )
 
 type ShelfRepository interface {

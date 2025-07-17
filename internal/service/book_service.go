@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"github.com/amirmtaati/libra/core/models"
-	"github.com/amirmtaati/libra/core/repository"
+	"github.com/amirmtaati/libra/internal/storage/models"
+	"github.com/amirmtaati/libra/internal/storage/repository"
 	"strings"
 )
 
