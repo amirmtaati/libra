@@ -23,8 +23,10 @@ func NewBookRepository(db *storage.Database) BookRepository {
 }
 
 func (r *bookRepository) Create(book *models.Book) error {
+    r.db.DB.AutoMigrate(&models.Book{})
 	return r.db.DB.Create(book).Error
 }
+
 
 func (r *bookRepository) GetByID(id uint) (*models.Book, error) {
 	var book models.Book

@@ -7,9 +7,9 @@ import (
 )
 
 type File struct {
-	title string
-	path  string
-	ext   string
+	Title string
+	Path  string
+	Ext   string
 }
 
 type Scanner struct {
@@ -17,10 +17,17 @@ type Scanner struct {
 	Files []File
 }
 
+func NewFile(title, path, ext string) File {
+	return File{
+		Title: title,
+		Path:  path,
+		Ext:   ext,
+	}
+}
+
 func NewScanner(path string) *Scanner {
 	return &Scanner{
-		path:  path,
-		Files: make([]File, 0),
+		path: path,
 	}
 }
 
@@ -32,11 +39,14 @@ func (s *Scanner) ScanDir() ([]File, error) {
 			return fmt.Errorf("Error walking directory: %v", err)
 		}
 
-		files = append(files, File{
-			title: d.Name(),
-			path:  path,
-			ext:   filepath.Ext(d.Name()),
-		})
+		if !d.IsDir() {
+			files = append(files, File{
+				Title: d.Name(),
+				Path:  path,
+				Ext:   filepath.Ext(d.Name()),
+			})
+
+		}
 
 		return nil
 	})
