@@ -39,7 +39,7 @@ func (r *bookRepository) GetByID(id uint) (*models.Book, error) {
 
 func (r *bookRepository) GetAll() ([]*models.Book, error) {
 	var books []*models.Book
-	if err := r.db.DB.First(&books).Error; err != nil {
+	if err := r.db.DB.Find(&books).Error; err != nil {
 		return nil, fmt.Errorf("Failed to get all books: %v", err)
 	}
 	return books, nil
