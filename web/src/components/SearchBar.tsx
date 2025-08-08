@@ -1,7 +1,13 @@
 "use client";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
-export default function SearchBar({ value, onChange, onClear }) {
+interface SearchBarProps {
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+}
+
+export default function SearchBar({ value, onChange, onClear }: SearchBarProps) {
   return (
     <div className="relative w-full max-w-2xl mx-auto mb-6">
       {/* Search icon */}

@@ -1,4 +1,9 @@
-export default function ShelfList({ shelves, onSelectShelf }) {
+export interface ShelfItem {
+  id: number;
+  name: string;
+}
+
+export default function ShelfList({ shelves, onSelectShelf }: { shelves: ShelfItem[]; onSelectShelf: (id: number) => void; }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {shelves.map((shelf) => (
