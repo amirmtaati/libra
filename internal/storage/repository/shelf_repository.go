@@ -67,7 +67,7 @@ func (r *shelfRepository) Delete(id uint) error {
 }
 
 func (r *shelfRepository) AddBook(shelf *models.Shelf, book *models.Book) error {
-	if err := r.db.DB.Model(&shelf).Association("Books").Append(&book); err != nil {
+	if err := r.db.DB.Model(shelf).Association("Books").Append(book); err != nil {
 		return fmt.Errorf("Failed to add book to shelf: %v", err)
 	}
 
@@ -84,7 +84,7 @@ func (r *shelfRepository) GetAllBooks(shelfID uint) ([]*models.Book, error) {
 }
 
 func (r *shelfRepository) RemoveBook(shelf *models.Shelf, book *models.Book) error {
-	if err := r.db.DB.Model(&shelf).Association("Books").Delete(&book); err != nil {
+	if err := r.db.DB.Model(shelf).Association("Books").Delete(book); err != nil {
 		return fmt.Errorf("Failed to delete book from shelf: %v", err)
 	}
 
