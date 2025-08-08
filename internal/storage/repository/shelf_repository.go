@@ -40,8 +40,12 @@ func (r *shelfRepository) GetByID(id uint) (*models.Shelf, error) {
 
 func (r *shelfRepository) GetAll() ([]*models.Shelf, error) {
 	var shelves []*models.Shelf
-	if err := r.db.DB.First(&shelves).Error; err != nil {
-		return nil, fmt.Errorf("Failed to get all shelfs: %v", err)
+	if err := r.db.DB.Find(&shelves).Error; err != nil {
+		return nil, fmt.Errorf("Failed to get all shelves: %v", err)
+	}
+	if shelves == nil {
+		// Ensure JSON renders [] instead of null
+		shelves = []*models.Shelf{}
 	}
 	return shelves, nil
 
