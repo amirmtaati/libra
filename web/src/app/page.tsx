@@ -37,10 +37,16 @@ export default function HomePage() {
         const shelvesResponse = await fetch('http://localhost:8080/api/shelves');
         const shelvesData = await shelvesResponse.json();
         if (!shelvesData.success) {
-          throw new Error(shelvesData.error || 'Failed to fetch shelves');
+          const errMsg = (shelvesData.error || '').toLowerCase();
+          if (errMsg.includes('record not found')) {
+            setShelves([]);
+          } else {
+            throw new Error(shelvesData.error || 'Failed to fetch shelves');
+          }
+        } else {
+          const mappedShelves: Shelf[] = (shelvesData.data || []).map((s: any) => ({ id: s.ID, name: s.Name }));
+          setShelves(mappedShelves);
         }
-        const mappedShelves: Shelf[] = (shelvesData.data || []).map((s: any) => ({ id: s.ID, name: s.Name }));
-        setShelves(mappedShelves);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
         console.error("Fetch error:", err);
