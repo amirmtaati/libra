@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 
-export default function Tabs({ tabs }) {
+export default function Tabs({ tabs }: { tabs: Record<string, ReactNode> }) {
   const [activeTab, setActiveTab] = useState(Object.keys(tabs)[0]);
 
   return (
