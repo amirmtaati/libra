@@ -54,8 +54,7 @@ func (r *bookRepository) Update(book *models.Book) error {
 }
 
 func (r *bookRepository) Delete(id uint) error {
-	var book models.Book
-	if err := r.db.DB.Delete(book, id).Error; err != nil {
+	if err := r.db.DB.Delete(&models.Book{}, id).Error; err != nil {
 		return err
 	}
 	return nil

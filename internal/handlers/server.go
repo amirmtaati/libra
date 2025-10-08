@@ -5,8 +5,9 @@ import (
 	"github.com/amirmtaati/libra/internal/app"
 	"github.com/amirmtaati/libra/pkg/scanner"
 	"github.com/gin-gonic/gin"
-	"strconv"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type APIResponse struct {
@@ -53,7 +54,8 @@ func (s *Server) setupRoutes() {
 		api.GET("/books/:id", s.getBook)
 		api.DELETE("/books/:id", s.deleteBook)
 		api.GET("/books/:id/download", s.downloadBook)
-
+// inside setupRoutes() after other /books routes
+api.POST("/books/:id", s.updateBook) // matches the UI POST
 		api.GET("/shelves", s.getShelves)
 		api.POST("/shelves", s.createShelf)
 		api.GET("/shelves/:id", s.getShelf)
@@ -140,6 +142,57 @@ func (s *Server) getBook(c *gin.Context) {
 		Success: true,
 		Data:    book,
 	})
+}
+
+func (s *Server) updateBook(c *gin.Context) {
+    idParam := c.Param("id")
+    id, err := strconv.ParseUint(idParam, 10, 32)
+    if err != nil {
+        c.JSON(400, APIResponse{
+            Success: false,
+            Error:   "Invalid book ID",
+        })
+        return
+    }
+	title := c.PostForm("title")
+	author := c.PostForm("author")
+	tags := c.PostForm("tags")
+	format := c.PostForm("format")
+	filepath := c.PostForm("filepath")
+    cover := c.PostForm("cover")
+
+	// Load existing book to ensure it exists and to update only the provided fields
+	existing, err := s.app.BookService.GetByID(uint(id))
+	if err != nil || existing == nil {
+		c.JSON(404, APIResponse{
+			Success: false,
+			Error:   "Book not found",
+		})
+		return
+	}
+
+	// Apply updates
+	existing.Title = strings.TrimSpace(title)
+	existing.Author = strings.TrimSpace(author)
+	existing.Tags = strings.TrimSpace(tags)
+	existing.Format = strings.ToUpper(format)
+	existing.FilePath = filepath
+	existing.Cover = strings.TrimSpace(cover)
+
+	if err := s.app.BookService.Update(existing); err != nil {
+		c.JSON(404, APIResponse{
+			Success: false,
+			Error:   "Book not found",
+		})
+		return
+
+	}
+
+	c.JSON(200, APIResponse{
+		Success: true,
+		Data:    existing,
+	})
+
 }
 
 func (s *Server) deleteBook(c *gin.Context) {

@@ -49,6 +49,14 @@ func (s *BookService) GetAll() ([]*models.Book, error) {
 	return books, nil
 }
 
+func (s *BookService) Update(book *models.Book) error {
+	err := s.bookRepo.Update(book)
+	if err != nil {
+		return fmt.Errorf("Failed to update book")
+	}
+	return nil
+}
+
 func (s *BookService) Delete(id uint) error {
 	err := s.bookRepo.Delete(id)
 	if err != nil {

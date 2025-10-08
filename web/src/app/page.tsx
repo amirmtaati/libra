@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import SearchBar from "../components/SearchBar";
 import Tabs from "../components/Tabs";
 import BookList, { BookDto } from "../components/BookList";
+import BookEditModal, { EditableBookDto } from "../components/BookEditModal";
+import ConfirmDialog from "../components/ConfirmDialog";
+import RescanModal from "../components/RescanModal";
 import ShelfList from "../components/ShelfList";
 
 interface Shelf {
@@ -22,65 +25,86 @@ export default function HomePage() {
   const [shelfBooks, setShelfBooks] = useState<BookDto[]>([]);
   const [loadingShelfBooks, setLoadingShelfBooks] = useState(false);
   const [shelfBooksError, setShelfBooksError] = useState<string | null>(null);
+  const [editingBook, setEditingBook] = useState<EditableBookDto | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [bookPendingDelete, setBookPendingDelete] = useState<BookDto | null>(null);
+  const [rescanOpen, setRescanOpen] = useState(false);
+  const [rescanPathModalOpen, setRescanPathModalOpen] = useState(false);
+
+  const fetchBooks = async () => {
+    const booksResponse = await fetch('http://localhost:8080/api/books');
+    const booksData = await booksResponse.json();
+    if (!booksData.success) throw new Error(booksData.error || 'Failed to fetch books');
+    setBooks(booksData.data || []);
+  };
+
+  const fetchShelves = async () => {
+    const shelvesResponse = await fetch('http://localhost:8080/api/shelves');
+    const shelvesData = await shelvesResponse.json();
+    if (!shelvesData.success) {
+      const errMsg = (shelvesData.error || '').toLowerCase();
+      if (errMsg.includes('record not found')) {
+        setShelves([]);
+        return;
+      }
+      throw new Error(shelvesData.error || 'Failed to fetch shelves');
+    }
+    const mappedShelves: Shelf[] = (shelvesData.data || []).map((s: any) => ({ id: s.ID, name: s.Name }));
+    setShelves(mappedShelves);
+  };
+
+  const fetchAll = async () => {
+    try {
+      await Promise.all([fetchBooks(), fetchShelves()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch books
-        const booksResponse = await fetch('http://localhost:8080/api/books');
-        const booksData = await booksResponse.json();
-        
-        if (!booksData.success) {
-          throw new Error(booksData.error || 'Failed to fetch books');
-        }
-        
-        setBooks(booksData.data || []);
-
-        // Fetch shelves
-        const shelvesResponse = await fetch('http://localhost:8080/api/shelves');
-        const shelvesData = await shelvesResponse.json();
-        if (!shelvesData.success) {
-          const errMsg = (shelvesData.error || '').toLowerCase();
-          if (errMsg.includes('record not found')) {
-            setShelves([]);
-          } else {
-            throw new Error(shelvesData.error || 'Failed to fetch shelves');
-          }
-        } else {
-          const mappedShelves: Shelf[] = (shelvesData.data || []).map((s: any) => ({ id: s.ID, name: s.Name }));
-          setShelves(mappedShelves);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
+    fetchAll();
+    const interval = setInterval(fetchAll, 10000);
+    const onFocus = () => fetchAll();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
+  }, []);
 
-    fetchData();
-  }, []); // Empty dependency array ensures this runs only once
+  const fetchShelfBooks = async () => {
+    if (selectedShelf === null) return;
+    try {
+      setLoadingShelfBooks(true);
+      setShelfBooksError(null);
+      const res = await fetch(`http://localhost:8080/api/shelves/${selectedShelf}/books`);
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch shelf books');
+      }
+      setShelfBooks(data.data || []);
+    } catch (e) {
+      setShelfBooksError(e instanceof Error ? e.message : 'Unknown error');
+      setShelfBooks([]);
+    } finally {
+      setLoadingShelfBooks(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedShelf === null) return;
-    const fetchShelfBooks = async () => {
-      try {
-        setLoadingShelfBooks(true);
-        setShelfBooksError(null);
-        const res = await fetch(`http://localhost:8080/api/shelves/${selectedShelf}/books`);
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch shelf books');
-        }
-        setShelfBooks(data.data || []);
-      } catch (e) {
-        setShelfBooksError(e instanceof Error ? e.message : 'Unknown error');
-        setShelfBooks([]);
-      } finally {
-        setLoadingShelfBooks(false);
-      }
-    };
     fetchShelfBooks();
+    const interval = setInterval(fetchShelfBooks, 10000);
+    const onFocus = () => fetchShelfBooks();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [selectedShelf]);
 
   const handleCreateShelf = async () => {
@@ -161,11 +185,93 @@ export default function HomePage() {
 
   return (
     <div className="p-8">
-      <SearchBar value={search} onChange={setSearch} onClear={() => setSearch("")} />
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex-1">
+          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch("")} />
+        </div>
+        <div className="flex-shrink-0">
+          <button
+            onClick={() => setRescanOpen(true)}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white"
+          >
+            Re-scan Library
+          </button>
+        </div>
+      </div>
 
       <Tabs
         tabs={{
-          "All Books": <BookList books={filteredBooks} />,
+          "All Books": (
+            <>
+              <BookList
+                books={filteredBooks}
+                onEdit={(book) => {
+                  setEditingBook(book as EditableBookDto);
+                  setEditOpen(true);
+                }}
+                onDelete={(book) => {
+                  setBookPendingDelete(book);
+                  setConfirmOpen(true);
+                }}
+              />
+              <BookEditModal
+                book={editingBook}
+                open={editOpen}
+                onClose={() => setEditOpen(false)}
+                onUpdated={(updated) => {
+                  setBooks((prev) => prev.map((b) => (b.ID === updated.ID ? { ...b, ...updated } : b)));
+                  setShelfBooks((prev) => prev.map((b) => (b.ID === updated.ID ? { ...b, ...updated } : b)));
+                }}
+              />
+              <ConfirmDialog
+                open={confirmOpen}
+                title="Delete book?"
+                message="This will permanently remove the book. Are you sure?"
+                confirmText="Delete"
+                onCancel={() => { setConfirmOpen(false); setBookPendingDelete(null); }}
+                onConfirm={async () => {
+                  if (!bookPendingDelete) return;
+                  try {
+                    const res = await fetch(`http://localhost:8080/api/books/${bookPendingDelete.ID}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete');
+                    setBooks((prev) => prev.filter((b) => b.ID !== bookPendingDelete.ID));
+                    setShelfBooks((prev) => prev.filter((b) => b.ID !== bookPendingDelete.ID));
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : 'Failed to delete');
+                  } finally {
+                    setConfirmOpen(false);
+                    setBookPendingDelete(null);
+                  }
+                }}
+              />
+              <ConfirmDialog
+                open={rescanOpen}
+                title="Re-scan library?"
+                message="Scanning can take time. Do you want to configure the directory before starting?"
+                confirmText="Configure & Start"
+                cancelText="Cancel"
+                onCancel={() => setRescanOpen(false)}
+                onConfirm={() => {
+                  setRescanOpen(false);
+                  setTimeout(() => {
+                    setRescanPathModalOpen(true);
+                  }, 0);
+                }}
+              />
+              <RescanModal
+                open={rescanPathModalOpen}
+                onClose={() => setRescanPathModalOpen(false)}
+                onTriggered={() => {
+                  // Immediately refresh after scan starts
+                  setTimeout(() => {
+                    fetchAll();
+                    if (selectedShelf !== null) fetchShelfBooks();
+                  }, 1000); // Give scan a moment to start
+                }}
+              />
+            </>
+          ),
           Shelves: selectedShelf ? (
             <div className="space-y-4">
               <button
